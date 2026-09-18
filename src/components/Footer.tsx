@@ -152,6 +152,11 @@ export function Footer() {
                   🎓 Acessar Área do Aluno
                 </Link>
               </li>
+              <li>
+                <Link href="/admin" className="text-slate-400 hover:text-amberbrand-300 transition-colors flex items-center gap-1 pt-1">
+                  🔒 Painel de Administração
+                </Link>
+              </li>
             </ul>
           </div>
 

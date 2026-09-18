@@ -1,7 +1,7 @@
 "use client";
 import React, { Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { PRODUCTS } from "@/data/products";
+import { useProducts } from "@/context/ProductsContext";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductFilters } from "@/components/ProductFilters";
 import { GuaranteeBadge } from "@/components/GuaranteeBadge";
@@ -9,6 +9,7 @@ import { Sparkles, ShieldCheck, Zap, BookOpen, AlertCircle } from "lucide-react"
 
 function ProductCatalog() {
   const searchParams = useSearchParams();
+  const { products } = useProducts();
 
   const searchQuery = searchParams.get("q")?.toLowerCase().trim() || "";
   const categoryFilter = searchParams.get("categoria") || "Todas";
@@ -18,7 +19,7 @@ function ProductCatalog() {
 
   // Filtragem estrita e honesta (Regra de Ouro da Busca)
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter((product) => {
+    return products.filter((product) => {
       // 1. Busca textual
       if (searchQuery) {
         const matchesTitle = product.title.toLowerCase().includes(searchQuery);

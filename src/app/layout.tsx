@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
+import { ProductsProvider } from "@/context/ProductsContext";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/CartDrawer";
@@ -35,24 +36,26 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className="flex flex-col min-h-screen bg-ice-50 text-navy-950 selection:bg-tealbrand-200 selection:text-tealbrand-900">
-        <CartProvider>
-          <Suspense
-            fallback={
-              <header className="h-16 bg-white border-b border-slate-200 flex items-center px-6">
-                <div className="font-bold text-navy-900">CURSOS LIVRES TECH & I.A</div>
-              </header>
-            }
-          >
-            <Navbar />
-          </Suspense>
+        <ProductsProvider>
+          <CartProvider>
+            <Suspense
+              fallback={
+                <header className="h-16 bg-white border-b border-slate-200 flex items-center px-6">
+                  <div className="font-bold text-navy-900">CURSOS LIVRES TECH & I.A</div>
+                </header>
+              }
+            >
+              <Navbar />
+            </Suspense>
 
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
-            {children}
-          </main>
+            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+              {children}
+            </main>
 
-          <CartDrawer />
-          <Footer />
-        </CartProvider>
+            <CartDrawer />
+            <Footer />
+          </CartProvider>
+        </ProductsProvider>
       </body>
     </html>
   );

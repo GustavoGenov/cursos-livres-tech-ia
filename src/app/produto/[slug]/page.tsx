@@ -2,7 +2,8 @@
 import React, { useState, use } from "react";
 import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
-import { PRODUCTS, Product } from "@/data/products";
+import { Product } from "@/data/products";
+import { useProducts } from "@/context/ProductsContext";
 import { useCart } from "@/context/CartContext";
 import { GuaranteeBadge } from "@/components/GuaranteeBadge";
 import { formatCurrency, calculateInstallment } from "@/lib/utils";
@@ -31,8 +32,9 @@ export default function ProductDetailPage({
   const resolvedParams = use(params);
   const router = useRouter();
   const { addToCart } = useCart();
+  const { getProductBySlug } = useProducts();
 
-  const product = PRODUCTS.find((p) => p.slug === resolvedParams.slug);
+  const product = getProductBySlug(resolvedParams.slug);
 
   if (!product) {
     notFound();
