@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-ice-50 text-navy-900 antialiased min-h-screen flex flex-col font-sans;
+  }
+}
+
+/* Ocultar barra de rolagem horizontal desnecessária preservando rolagem funcional */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
