@@ -1,7 +1,7 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Filter, X, Check, ArrowDownUp } from "lucide-react";
+import { Filter, X, Check, ArrowDownUp, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
 import { CATEGORIES, DELIVERY_FORMATS } from "@/data/products";
 
 interface ProductFiltersProps {
@@ -11,6 +11,7 @@ interface ProductFiltersProps {
 export function ProductFilters({ totalResults }: ProductFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isOpenMobile, setIsOpenMobile] = useState(false);
 
   const currentCategory = searchParams.get("categoria") || "Todas";
   const currentFormat = searchParams.get("formato") || "Todos";
@@ -38,24 +39,61 @@ export function ProductFilters({ totalResults }: ProductFiltersProps) {
     currentPriceRange !== "todos" ||
     searchQuery !== "";
 
+  const activeFiltersCount =
+    (currentCategory !== "Todas" ? 1 : 0) +
+    (currentFormat !== "Todos" ? 1 : 0) +
+    (currentPriceRange !== "todos" ? 1 : 0) +
+    (searchQuery ? 1 : 0);
+
   return (
-    <aside className="space-y-6">
-      {/* Cabeçalho dos Filtros */}
+    <aside className="space-y-4 lg:space-y-6">
+      {/* Cabeçalho dos Filtros com Toggle Mobile */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-        <div className="flex items-center gap-2 font-bold text-navy-900 text-sm">
-          <Filter className="w-4 h-4 text-tealbrand-600" />
-          <span>Filtros Estritos</span>
-        </div>
-        {hasActiveFilters && (
+        <button
+          type="button"
+          onClick={() => setIsOpenMobile(!isOpenMobile)}
+          className="flex items-center gap-2 font-bold text-navy-900 text-sm text-left lg:pointer-events-none group"
+        >
+          <SlidersHorizontal className="w-4 h-4 text-tealbrand-600 flex-shrink-0" />
+          <span>Filtros & Ordenação</span>
+          {activeFiltersCount > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-amberbrand-500 text-navy-950 shadow-xs">
+              {activeFiltersCount}
+            </span>
+          )}
+        </button>
+
+        <div className="flex items-center gap-2">
+          {hasActiveFilters && (
+            <button
+              onClick={clearAllFilters}
+              className="text-xs text-navy-600 hover:text-red-600 flex items-center gap-1 font-medium transition-colors"
+            >
+              <X className="w-3 h-3" />
+              Limpar
+            </button>
+          )}
+
           <button
-            onClick={clearAllFilters}
-            className="text-xs text-navy-600 hover:text-red-600 flex items-center gap-1 font-medium transition-colors"
+            type="button"
+            onClick={() => setIsOpenMobile(!isOpenMobile)}
+            className="lg:hidden p-1 rounded-md text-navy-700 hover:bg-slate-100 transition-colors flex items-center gap-1 text-xs font-semibold"
+            aria-label={isOpenMobile ? "Recolher filtros" : "Expandir filtros"}
           >
-            <X className="w-3 h-3" />
-            Limpar
+            <span className="text-[11px] text-slate-500">
+              {isOpenMobile ? "Ocultar" : "Mostrar"}
+            </span>
+            {isOpenMobile ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
           </button>
-        )}
+        </div>
       </div>
+
+      {/* Conteúdo dos Filtros (Sempre visível em desktop, expansível no mobile) */}
+      <div className={`${isOpenMobile ? "block" : "hidden lg:block"} space-y-6 pt-1`}>
 
       {/* Resultado da Busca Ativa (se houver) */}
       {searchQuery && (
@@ -176,14 +214,15 @@ export function ProductFilters({ totalResults }: ProductFiltersProps) {
         </select>
       </div>
 
-      {/* Totalizador & Compromisso de Honestidade */}
-      <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/80 text-[11px] text-slate-600 space-y-1">
-        <div className="font-semibold text-navy-900">
-          {totalResults} {totalResults === 1 ? "produto encontrado" : "produtos encontrados"}
+        {/* Totalizador & Compromisso de Honestidade */}
+        <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/80 text-[11px] text-slate-600 space-y-1">
+          <div className="font-semibold text-navy-900">
+            {totalResults} {totalResults === 1 ? "produto encontrado" : "produtos encontrados"}
+          </div>
+          <p className="text-[10px] text-slate-500 leading-tight">
+            Nenhum anúncio patrocinado ou produto descontextualizado é injetado nesta listagem.
+          </p>
         </div>
-        <p className="text-[10px] text-slate-500 leading-tight">
-          Nenhum anúncio patrocinado ou produto descontextualizado é injetado nesta listagem.
-        </p>
       </div>
     </aside>
   );

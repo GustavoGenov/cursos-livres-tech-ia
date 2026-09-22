@@ -117,8 +117,8 @@ function ProductCatalog() {
 
       {/* Grid Principal: Filtros Estritos (Esquerda) + Produtos (Direita) */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8 items-start">
-        {/* Painel de Filtros */}
-        <div className="lg:col-span-1 bg-white p-5 rounded-xl border border-slate-200 shadow-xs sticky top-24">
+        {/* Painel de Filtros (Apenas sticky em desktop) */}
+        <div className="lg:col-span-1 bg-white p-3.5 sm:p-5 rounded-xl border border-slate-200 shadow-xs lg:sticky lg:top-24">
           <ProductFilters totalResults={filteredProducts.length} />
         </div>
 

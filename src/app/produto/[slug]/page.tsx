@@ -124,7 +124,7 @@ export default function ProductDetailPage({
               <button
                 key={tab.id}
                 onClick={() => setSelectedImageTab(tab.id)}
-                className={`relative aspect-4/3 rounded-lg overflow-hidden border-2 transition-all ${
+                className={`relative aspect-[4/3] rounded-lg overflow-hidden border-2 transition-all ${
                   selectedImageTab === tab.id
                     ? "border-amberbrand-500 ring-2 ring-amberbrand-200"
                     : "border-slate-200 opacity-70 hover:opacity-100"
