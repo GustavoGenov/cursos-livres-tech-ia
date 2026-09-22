@@ -16,7 +16,7 @@ export interface Product {
   slug: string;
   title: string;
   subtitle: string;
-  category: "Inteligência Artificial" | "Apostilas" | "Livros" | "Vídeos" | "Diversos";
+  category: string;
   format: "Download Imediato (PDF)" | "Acesso à Área de Membros (Vídeo)";
   formatShort: "PDF" | "Vídeo";
   price: number;
@@ -413,11 +413,35 @@ export const PRODUCTS: Product[] = [
 export const CATEGORIES = [
   "Todas",
   "Inteligência Artificial",
+  "Cursos e Treinamentos",
+  "eBooks",
+  "Jogos",
+  "Arte Digital",
+  "Artesanato e Personalizados",
+  "Assinaturas e Premium",
+  "Discord",
+  "Emails",
+  "Gift Cards",
+  "Google Play",
+  "Impressão 3D e STL",
+  "Listas de Fornecedores",
+  "Números, Proxy e VPN",
+  "Planilhas e Dashboards",
+  "Produtos Físicos",
+  "Redes Sociais",
+  "Serviços Digitais",
+  "Sites, Lojas e Sistemas Prontos",
+  "Softwares e Licenças",
+  "Telegram",
+  "Vídeos e Cortes",
   "Apostilas",
   "Livros",
   "Vídeos",
   "Diversos",
+  "Outros",
 ] as const;
+
+export type ProductCategory = (typeof CATEGORIES)[number];
 
 export const DELIVERY_FORMATS = [
   "Todos",

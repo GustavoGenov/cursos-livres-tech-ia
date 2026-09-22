@@ -114,10 +114,12 @@ export function ProductFilters({ totalResults }: ProductFiltersProps) {
 
       {/* Filtro 1: Categorias */}
       <div className="space-y-2">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-navy-800">
-          Categorias
-        </h4>
-        <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-navy-800">
+            Categorias ({CATEGORIES.length - 1})
+          </h4>
+        </div>
+        <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
           {CATEGORIES.map((cat) => {
             const isSelected = currentCategory === cat;
             return (

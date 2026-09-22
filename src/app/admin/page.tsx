@@ -591,7 +591,7 @@ export default function AdminPage() {
                     onChange={(e) => setFormCategory(e.target.value as any)}
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-hidden bg-white"
                   >
-                    {CATEGORIES.map((c) => (
+                    {CATEGORIES.filter((c) => c !== "Todas").map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
