@@ -81,6 +81,45 @@ async function compressImageFile(file: File): Promise<string> {
   });
 }
 
+// Contas de Administradores Autorizados
+const ADMIN_ACCOUNTS = [
+  {
+    name: "Jalhematei",
+    initials: "JL",
+    role: "Administrador Master",
+    matchesUser: (u: string) =>
+      u === "jalhematei" ||
+      u === "jalhematei@cursoslivres.com" ||
+      u === "gustavocastroinfo@gmail.com",
+    matchesPass: (p: string) =>
+      p === "37999184509" || p.replace(/\D/g, "") === "37999184509",
+  },
+  {
+    name: "Rui Wenceslau",
+    initials: "RW",
+    role: "Administrador",
+    matchesUser: (u: string) =>
+      u === "ruiwenceslau" ||
+      u === "rui wenceslau" ||
+      u === "rui" ||
+      u === "ruiwenceslau@cursoslivres.com",
+    matchesPass: (p: string) =>
+      p === "3798437274" || p.replace(/\D/g, "") === "3798437274",
+  },
+  {
+    name: "Beatriz Freire",
+    initials: "BF",
+    role: "Administradora",
+    matchesUser: (u: string) =>
+      u === "freireb11@gmail.com" ||
+      u === "beatriz" ||
+      u === "beatriz freire" ||
+      u.replace(/\D/g, "") === "11949028721",
+    matchesPass: (p: string) =>
+      p.replace(/\D/g, "") === "11949028721" || p.includes("949028721"),
+  },
+];
+
 export default function Admin25Page() {
   const router = useRouter();
   const { products, addProduct, updateProduct, deleteProduct, resetToDefault } = useProducts();
@@ -157,29 +196,14 @@ export default function Admin25Page() {
     const cleanLogin = loginInput.trim().toLowerCase();
     const cleanPass = passwordInput.trim().replace(/\s+/g, "");
 
-    // 1. Credencial Principal: Jalhematei (senha: 37999184509)
-    const isJalhemateiUser =
-      cleanLogin === "jalhematei" ||
-      cleanLogin === "jalhematei@cursoslivres.com" ||
-      cleanLogin === "gustavocastroinfo@gmail.com";
-    const isJalhemateiPass =
-      cleanPass === "37999184509" ||
-      cleanPass.replace(/\D/g, "") === "37999184509";
+    const foundAccount = ADMIN_ACCOUNTS.find(
+      (acc) => acc.matchesUser(cleanLogin) && acc.matchesPass(cleanPass)
+    );
 
-    // 2. Credencial Alternativa (Beatriz Freire)
-    const isBeatrizUser = cleanLogin === "freireb11@gmail.com" || cleanLogin === "beatriz";
-    const isBeatrizPass = cleanPass.replace(/\D/g, "").includes("949028721");
-
-    if (isJalhemateiUser && isJalhemateiPass) {
+    if (foundAccount) {
       localStorage.setItem(ADMIN_AUTH_KEY, "true");
-      localStorage.setItem(ADMIN_USER_KEY, "Jalhematei");
-      setCurrentAdminName("Jalhematei");
-      setIsAuthenticated(true);
-      setLoginError("");
-    } else if (isBeatrizUser && isBeatrizPass) {
-      localStorage.setItem(ADMIN_AUTH_KEY, "true");
-      localStorage.setItem(ADMIN_USER_KEY, "Beatriz Freire");
-      setCurrentAdminName("Beatriz Freire");
+      localStorage.setItem(ADMIN_USER_KEY, foundAccount.name);
+      setCurrentAdminName(foundAccount.name);
       setIsAuthenticated(true);
       setLoginError("");
     } else {
@@ -486,22 +510,31 @@ export default function Admin25Page() {
       {/* Top Bar do Painel */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-navy-950 text-amberbrand-400 flex items-center justify-center font-bold text-sm shadow-xs border border-navy-800">
-            JL
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-black text-navy-950">
-                Painel Administrativo: {currentAdminName}
-              </h1>
-              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                Administrador Master Ativo
-              </span>
-            </div>
-            <p className="text-xs text-slate-500">
-              Controle Total de Catálogo, Upload de Fotos e Publicação em Tempo Real
-            </p>
-          </div>
+          {(() => {
+            const activeAcc =
+              ADMIN_ACCOUNTS.find((a) => a.name === currentAdminName) ||
+              ADMIN_ACCOUNTS[0];
+            return (
+              <>
+                <div className="w-11 h-11 rounded-xl bg-navy-950 text-amberbrand-400 flex items-center justify-center font-bold text-sm shadow-xs border border-navy-800">
+                  {activeAcc.initials}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-lg font-black text-navy-950">
+                      Painel Administrativo: {activeAcc.name}
+                    </h1>
+                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      {activeAcc.role} Ativo(a)
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Controle Total de Catálogo, Upload de Fotos e Publicação em Tempo Real
+                  </p>
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         <div className="flex items-center gap-2 self-stretch md:self-auto">
