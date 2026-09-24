@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, use } from "react";
+import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import { Product } from "@/data/products";
@@ -32,24 +32,56 @@ export default function ProductDetailPage({
   const resolvedParams = use(params);
   const router = useRouter();
   const { addToCart } = useCart();
-  const { getProductBySlug } = useProducts();
+  const { getProductBySlug, isLoaded } = useProducts();
 
-  const product = getProductBySlug(resolvedParams.slug);
-
-  if (!product) {
-    notFound();
-  }
+  const [product, setProduct] = useState<Product | undefined>(() =>
+    getProductBySlug(resolvedParams.slug)
+  );
+  const [checking, setChecking] = useState(true);
 
   // Galeria de 3 amostras reais
   const [selectedImageTab, setSelectedImageTab] = useState<"cover" | "summary" | "sample">("cover");
 
+  useEffect(() => {
+    const found = getProductBySlug(resolvedParams.slug);
+    if (found) {
+      setProduct(found);
+      setChecking(false);
+    } else if (isLoaded) {
+      setChecking(false);
+    }
+  }, [resolvedParams.slug, getProductBySlug, isLoaded]);
+
+  // Se ainda estiver verificando ou carregando o catálogo, exibe tela de carregamento elegante
+  if (checking && !product) {
+    return (
+      <div className="max-w-5xl mx-auto py-16 px-4 space-y-6 animate-pulse">
+        <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-7 bg-slate-100 rounded-2xl h-96"></div>
+          <div className="lg:col-span-5 space-y-4">
+            <div className="h-8 bg-slate-200 rounded w-3/4"></div>
+            <div className="h-4 bg-slate-200 rounded w-full"></div>
+            <div className="h-24 bg-slate-100 rounded-xl"></div>
+            <div className="h-12 bg-amberbrand-200 rounded-xl"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Se o catálogo terminou de carregar e o produto realmente não existe
+  if (!product) {
+    notFound();
+  }
+
   const imageTabs = [
-    { id: "cover" as const, label: "1. Capa Oficial", src: product.images.cover },
-    { id: "summary" as const, label: "2. Sumário / Índice", src: product.images.summary },
-    { id: "sample" as const, label: "3. Amostra Interna", src: product.images.sample },
+    { id: "cover" as const, label: "1. Capa Oficial", src: product.images?.cover || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80" },
+    { id: "summary" as const, label: "2. Sumário / Índice", src: product.images?.summary || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80" },
+    { id: "sample" as const, label: "3. Amostra Interna", src: product.images?.sample || "https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=800&q=80" },
   ];
 
-  const currentImage = product.images[selectedImageTab];
+  const currentImage = product.images?.[selectedImageTab] || imageTabs.find((t) => t.id === selectedImageTab)?.src || imageTabs[0].src;
   const installment = calculateInstallment(product.price);
 
   const handleBuyNow = () => {
@@ -70,7 +102,7 @@ export default function ProductDetailPage({
         </Link>
         <ChevronRight className="w-3.5 h-3.5" />
         <Link
-          href={`/?categoria=${encodeURIComponent(product.category)}`}
+          href={`/?categoria=${encodeURIComponent(product.category || "Todas")}`}
           className="hover:text-navy-900 transition-colors"
         >
           {product.category}
@@ -239,54 +271,58 @@ export default function ProductDetailPage({
         </div>
       </div>
 
-      {/* Descrição Objetiva em Tópicos (O que você vai aprender, requisitos, o que está incluso) */}
+      {/* Descrição Objetiva em Tópicos */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 space-y-8 shadow-xs">
         {/* Seção 1: O que você vai aprender */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-tealbrand-100 text-tealbrand-800 flex items-center justify-center font-bold">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <h2 className="text-lg sm:text-xl font-bold text-navy-950">
-              O que você vai aprender na prática
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-            {product.whatYouWillLearn.map((item, idx) => (
-              <div
-                key={idx}
-                className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-start gap-3"
-              >
-                <div className="w-5 h-5 rounded-full bg-tealbrand-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
-                  {idx + 1}
-                </div>
-                <span className="text-xs sm:text-sm text-navy-800 leading-relaxed font-medium">
-                  {item}
-                </span>
+        {product.whatYouWillLearn && product.whatYouWillLearn.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-tealbrand-100 text-tealbrand-800 flex items-center justify-center font-bold">
+                <CheckCircle2 className="w-5 h-5" />
               </div>
-            ))}
+              <h2 className="text-lg sm:text-xl font-bold text-navy-950">
+                O que você vai aprender na prática
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+              {product.whatYouWillLearn.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-start gap-3"
+                >
+                  <div className="w-5 h-5 rounded-full bg-tealbrand-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                    {idx + 1}
+                  </div>
+                  <span className="text-xs sm:text-sm text-navy-800 leading-relaxed font-medium">
+                    {item}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Seção 2: O que está incluso no seu acesso */}
-        <div className="space-y-4 pt-6 border-t border-slate-200">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-navy-100 text-navy-900 flex items-center justify-center font-bold">
-              <Layers className="w-5 h-5" />
+        {product.whatIsIncluded && product.whatIsIncluded.length > 0 && (
+          <div className="space-y-4 pt-6 border-t border-slate-200">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-navy-100 text-navy-900 flex items-center justify-center font-bold">
+                <Layers className="w-5 h-5" />
+              </div>
+              <h2 className="text-lg sm:text-xl font-bold text-navy-950">
+                O que está incluso no seu download ou acesso
+              </h2>
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-navy-950">
-              O que está incluso no seu download ou acesso
-            </h2>
+            <ul className="space-y-2.5 pt-2">
+              {product.whatIsIncluded.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-700">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="space-y-2.5 pt-2">
-            {product.whatIsIncluded.map((item, idx) => (
-              <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-700">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        )}
 
         {/* Seção 3: Se houver módulos de vídeo (para cursos) */}
         {product.videoModules && (
@@ -347,7 +383,7 @@ export default function ProductDetailPage({
               Formato de Entrega & Acesso
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              {product.deliveryDetails.formatDescription} ({product.deliveryDetails.fileSizeOrAccess}).
+              {product.deliveryDetails?.formatDescription || product.format} ({product.deliveryDetails?.fileSizeOrAccess || product.pagesOrDuration}).
             </p>
             <p className="text-xs text-emerald-700 font-medium">
               ✓ Entrega imediata automática na sua Área do Aluno e por e-mail após a confirmação.
@@ -360,9 +396,13 @@ export default function ProductDetailPage({
               Requisitos do Material
             </h3>
             <ul className="space-y-1 text-xs text-slate-600">
-              {product.requirements.map((req, rIdx) => (
-                <li key={rIdx}>• {req}</li>
-              ))}
+              {product.requirements && product.requirements.length > 0 ? (
+                product.requirements.map((req, rIdx) => (
+                  <li key={rIdx}>• {req}</li>
+                ))
+              ) : (
+                <li>• Qualquer aparelho com acesso à internet ou leitor de PDF</li>
+              )}
             </ul>
           </div>
         </div>

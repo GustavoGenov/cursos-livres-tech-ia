@@ -14,6 +14,10 @@ import {
   ShieldCheck,
   Zap,
   Sparkles,
+  Mail,
+  RefreshCw,
+  Eye,
+  X,
 } from "lucide-react";
 
 function OrderSuccessContent() {
@@ -24,6 +28,10 @@ function OrderSuccessContent() {
   const [order, setOrder] = useState<any>(null);
   const [copied, setCopied] = useState(false);
   const [simulatedPaid, setSimulatedPaid] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<string>("");
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string>("");
 
   useEffect(() => {
     try {
@@ -36,6 +44,7 @@ function OrderSuccessContent() {
           setOrder(found);
           if (found.status === "aprovado") {
             setSimulatedPaid(true);
+            triggerEmailAutomation(found);
           }
         } else if (orders.length > 0) {
           setOrder(orders[0]);
@@ -47,6 +56,36 @@ function OrderSuccessContent() {
       console.error("Erro ao carregar pedido:", e);
     }
   }, [orderId]);
+
+  const triggerEmailAutomation = async (targetOrder: any) => {
+    if (!targetOrder?.customer?.email) return;
+    setEmailSending(true);
+    try {
+      const res = await fetch("/api/send-material-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: targetOrder.orderId,
+          customer: targetOrder.customer,
+          items: targetOrder.items,
+          total: targetOrder.total,
+          paymentMethod: targetOrder.paymentMethod,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEmailStatus(`Materiais e comprovante enviados com sucesso para ${targetOrder.customer.email}!`);
+        if (data.emailPreviewHtml) {
+          setPreviewHtml(data.emailPreviewHtml);
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao disparar automação de e-mail:", err);
+      setEmailStatus("Automação registrada: materiais disponíveis também na Área do Aluno.");
+    } finally {
+      setEmailSending(false);
+    }
+  };
 
   const handleCopyPix = () => {
     if (order?.pixCopiaECola) {
@@ -67,7 +106,11 @@ function OrderSuccessContent() {
       );
       localStorage.setItem("@cursos-livres-tech-ia/orders", JSON.stringify(updated));
       setSimulatedPaid(true);
-      setOrder((prev: any) => ({ ...prev, status: "aprovado" }));
+      const updatedOrder = { ...order, status: "aprovado" };
+      setOrder(updatedOrder);
+
+      // Dispara imediatamente a automação de e-mail ao pagar
+      triggerEmailAutomation(updatedOrder);
     } catch (e) {
       console.error("Erro ao simular aprovação:", e);
     }
@@ -116,17 +159,49 @@ function OrderSuccessContent() {
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
             {isApproved
-              ? `Parabéns, ${order.customer.fullName}! Seus materiais já estão disponíveis para download imediato e liberados na Área do Aluno.`
-              : `Olá, ${order.customer.fullName}! Escaneie o QR Code abaixo ou utilize a chave Pix Copia e Cola. O acesso é liberado instantaneamente.`}
+              ? `Parabéns, ${order.customer?.fullName || "Aluno(a)"}! Seus materiais foram liberados imediatamente e enviados para o seu e-mail.`
+              : `Olá, ${order.customer?.fullName || "Aluno(a)"}! Escaneie o QR Code abaixo ou utilize o código Copia e Cola. O acesso é liberado instantaneamente assim que confirmado.`}
           </p>
         </div>
 
-        {/* Notificação de Envio por E-mail */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600">
-          <span>
-            Enviamos os dados e o comprovante para: <strong>{order.customer.email}</strong>
-          </span>
+        {/* Notificação da Automação de E-mail */}
+        <div className="inline-flex flex-col sm:flex-row items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 max-w-xl mx-auto">
+          <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4 text-tealbrand-600 flex-shrink-0" />
+            <span>
+              E-mail do Aluno: <strong>{order.customer?.email}</strong>
+            </span>
+          </div>
+          {isApproved && (
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline text-slate-300">•</span>
+              <button
+                onClick={() => triggerEmailAutomation(order)}
+                disabled={emailSending}
+                className="text-[11px] font-bold text-tealbrand-700 hover:text-tealbrand-900 underline flex items-center gap-1"
+              >
+                <RefreshCw className={`w-3 h-3 ${emailSending ? "animate-spin" : ""}`} />
+                <span>{emailSending ? "Enviando..." : "Reenviar e-mail"}</span>
+              </button>
+              {previewHtml && (
+                <button
+                  onClick={() => setPreviewModalOpen(true)}
+                  className="text-[11px] font-bold text-navy-800 hover:text-navy-950 underline flex items-center gap-1 ml-2"
+                >
+                  <Eye className="w-3 h-3" />
+                  <span>Ver e-mail</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
+
+        {emailStatus && isApproved && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center justify-center gap-2 max-w-xl mx-auto">
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+            <span>{emailStatus}</span>
+          </div>
+        )}
       </div>
 
       {/* Caixa do Pix (se Pix e ainda aguardando) */}
@@ -215,49 +290,52 @@ function OrderSuccessContent() {
           </div>
 
           <div className="divide-y divide-slate-100">
-            {order.items.map((item: any) => (
-              <div
-                key={item.id}
-                className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-              >
-                <div>
-                  <span className="text-[10px] font-bold text-tealbrand-700 bg-tealbrand-50 px-2 py-0.5 rounded uppercase">
-                    {item.format}
-                  </span>
-                  <h4 className="font-bold text-navy-950 text-sm sm:text-base mt-1">
-                    {item.title}
-                  </h4>
-                </div>
+            {order.items?.map((item: any) => {
+              const isVideo =
+                item.format?.includes("Vídeo") || item.format?.includes("Membros");
+              const downloadUrl = `/api/download/${encodeURIComponent(
+                item.slug || item.id
+              )}?nome=${encodeURIComponent(
+                order.customer?.fullName || "Aluno"
+              )}&pedido=${order.orderId}`;
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  {item.format?.includes("PDF") ? (
-                    <a
-                      href={`/samples/${item.slug || "material"}.pdf`}
-                      download
-                      onClick={(e) => {
-                        // fallback se não tiver arquivo físico
-                        e.preventDefault();
-                        alert(
-                          `Iniciando download seguro de: "${item.title}". Arquivo PDF oficial emitido pela Cursos Livres Tech & I.A.`
-                        );
-                      }}
-                      className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
-                    >
-                      <Download className="w-4 h-4" />
-                      <span>Baixar Arquivo PDF</span>
-                    </a>
-                  ) : (
-                    <Link
-                      href="/area-do-aluno"
-                      className="w-full sm:w-auto px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
-                    >
-                      <Video className="w-4 h-4" />
-                      <span>Acessar Aulas</span>
-                    </Link>
-                  )}
+              return (
+                <div
+                  key={item.id}
+                  className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                >
+                  <div>
+                    <span className="text-[10px] font-bold text-tealbrand-700 bg-tealbrand-50 px-2 py-0.5 rounded uppercase">
+                      {item.format || "PDF"}
+                    </span>
+                    <h4 className="font-bold text-navy-950 text-sm sm:text-base mt-1">
+                      {item.title}
+                    </h4>
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {!isVideo ? (
+                      <a
+                        href={downloadUrl}
+                        download
+                        className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Baixar Arquivo PDF</span>
+                      </a>
+                    ) : (
+                      <Link
+                        href="/area-do-aluno"
+                        className="w-full sm:w-auto px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                      >
+                        <Video className="w-4 h-4" />
+                        <span>Acessar Aulas</span>
+                      </Link>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -282,6 +360,45 @@ function OrderSuccessContent() {
           <strong>Lembre-se da sua garantia incondicional de 7 dias:</strong> Caso deseje qualquer esclarecimento ou cancelamento com devolução 100% integral (Art. 49 CDC), contate nosso suporte pelo WhatsApp ou e-mail.
         </div>
       </div>
+
+      {/* Modal de Prévia do E-mail Enviado */}
+      {previewModalOpen && previewHtml && (
+        <div className="fixed inset-0 z-50 bg-navy-950/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Mail className="w-5 h-5 text-tealbrand-600" />
+                <h3 className="text-base font-bold text-navy-950">
+                  Prévia do E-mail Enviado ao Aluno
+                </h3>
+              </div>
+              <button
+                onClick={() => setPreviewModalOpen(false)}
+                className="p-1 text-slate-400 hover:text-navy-950 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl p-2 bg-slate-50">
+              <iframe
+                title="Prévia do E-mail"
+                srcDoc={previewHtml}
+                className="w-full h-96 rounded-lg bg-white"
+              />
+            </div>
+
+            <div className="pt-2 text-right">
+              <button
+                onClick={() => setPreviewModalOpen(false)}
+                className="px-4 py-2 bg-navy-900 text-white rounded-xl text-xs font-bold"
+              >
+                Fechar Prévia
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

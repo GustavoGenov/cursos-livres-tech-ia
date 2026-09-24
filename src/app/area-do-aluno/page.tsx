@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { PRODUCTS, Product, VideoLesson } from "@/data/products";
+import { useProducts } from "@/context/ProductsContext";
 import { formatCurrency } from "@/lib/utils";
 import { formatCPF } from "@/lib/cpfValidator";
 import {
@@ -18,10 +19,12 @@ import {
   CheckCircle2,
   Lock,
   X,
-  ExternalLink,
+  Mail,
+  RefreshCw,
 } from "lucide-react";
 
 export default function StudentAreaPage() {
+  const { products } = useProducts();
   const [currentUser, setCurrentUser] = useState<{
     email: string;
     cpf: string;
@@ -35,6 +38,8 @@ export default function StudentAreaPage() {
 
   // Pedidos e Materiais do Usuário
   const [userOrders, setUserOrders] = useState<any[]>([]);
+  const [emailStatus, setEmailStatus] = useState("");
+  const [resendingEmail, setResendingEmail] = useState(false);
 
   // Estado do Player de Vídeo Integrado
   const [activeVideoCourse, setActiveVideoCourse] = useState<Product | null>(null);
@@ -86,7 +91,6 @@ export default function StudentAreaPage() {
           o.customer?.email?.toLowerCase() === email.toLowerCase()
       );
       if (matchingLocal.length > 0) {
-        // Evita duplicatas por orderId
         const ids = new Set(combinedOrders.map((o) => o.orderId));
         for (const loc of matchingLocal) {
           if (!ids.has(loc.orderId)) {
@@ -111,18 +115,11 @@ export default function StudentAreaPage() {
           status: "aprovado",
           items: [
             {
-              id: PRODUCTS[0].id,
-              title: PRODUCTS[0].title,
-              format: PRODUCTS[0].format,
-              price: PRODUCTS[0].price,
-              slug: PRODUCTS[0].slug,
-            },
-            {
-              id: PRODUCTS[2].id,
-              title: PRODUCTS[2].title,
-              format: PRODUCTS[2].format,
-              price: PRODUCTS[2].price,
-              slug: PRODUCTS[2].slug,
+              id: products[0]?.id || PRODUCTS[0].id,
+              title: products[0]?.title || PRODUCTS[0].title,
+              format: products[0]?.format || PRODUCTS[0].format,
+              price: products[0]?.price || PRODUCTS[0].price,
+              slug: products[0]?.slug || PRODUCTS[0].slug,
             },
           ],
         },
@@ -157,8 +154,42 @@ export default function StudentAreaPage() {
     setUserOrders([]);
   };
 
+  const handleResendMaterialsToEmail = async (ord: any) => {
+    if (!currentUser?.email) return;
+    setResendingEmail(true);
+    setEmailStatus("");
+    try {
+      const res = await fetch("/api/send-material-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: ord.orderId,
+          customer: {
+            fullName: currentUser.name || "Aluno(a)",
+            email: currentUser.email,
+            cpf: currentUser.cpf,
+          },
+          items: ord.items,
+          total: ord.total || 47.0,
+          paymentMethod: ord.paymentMethod || "pix",
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEmailStatus(`Materiais reenviados com sucesso para ${currentUser.email}!`);
+        setTimeout(() => setEmailStatus(""), 6000);
+      }
+    } catch (e) {
+      console.error(e);
+      setEmailStatus("Falha ao reenviar e-mail. Tente novamente em instantes.");
+    } finally {
+      setResendingEmail(false);
+    }
+  };
+
   const openCoursePlayer = (productSlug: string) => {
-    const found = PRODUCTS.find((p) => p.slug === productSlug);
+    const all = [...products, ...PRODUCTS];
+    const found = all.find((p) => p.slug === productSlug || p.id === productSlug);
     if (found && found.videoModules && found.videoModules.length > 0) {
       setActiveVideoCourse(found);
       setActiveLesson(found.videoModules[0].lessons[0]);
@@ -203,6 +234,13 @@ export default function StudentAreaPage() {
           </div>
         )}
       </div>
+
+      {emailStatus && (
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+          <span>{emailStatus}</span>
+        </div>
+      )}
 
       {/* Caso NÃO esteja logado: Tela de Login Simples */}
       {!currentUser ? (
@@ -292,21 +330,37 @@ export default function StudentAreaPage() {
                     key={ord.orderId}
                     className="border border-slate-200 rounded-xl p-4 sm:p-5 bg-slate-50/50 space-y-4"
                   >
-                    <div className="flex items-center justify-between text-xs text-slate-500 border-b border-slate-200/60 pb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 border-b border-slate-200/60 pb-2 gap-2">
                       <div>
                         <strong>Pedido #{ord.orderId}</strong> •{" "}
                         {new Date(ord.createdAt).toLocaleDateString("pt-BR")}
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 uppercase">
-                        {ord.status === "aprovado" ? "Acesso Liberado" : "Pendente"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleResendMaterialsToEmail(ord)}
+                          disabled={resendingEmail}
+                          className="text-[11px] font-bold text-tealbrand-700 hover:text-tealbrand-900 underline flex items-center gap-1"
+                        >
+                          <Mail className="w-3 h-3" />
+                          <span>Receber no meu e-mail</span>
+                        </button>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 uppercase">
+                          {ord.status === "aprovado" ? "Acesso Liberado" : "Pendente"}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="space-y-3">
-                      {ord.items.map((item: any, idx: number) => {
+                      {ord.items?.map((item: any, idx: number) => {
                         const isVideo =
                           item.format?.includes("Vídeo") ||
                           item.format?.includes("Membros");
+                        const downloadUrl = `/api/download/${encodeURIComponent(
+                          item.slug || item.id
+                        )}?nome=${encodeURIComponent(
+                          currentUser.name || "Aluno"
+                        )}&pedido=${ord.orderId}`;
+
                         return (
                           <div
                             key={idx}
@@ -327,24 +381,21 @@ export default function StudentAreaPage() {
                             <div className="flex items-center gap-2 w-full sm:w-auto">
                               {isVideo ? (
                                 <button
-                                  onClick={() => openCoursePlayer(item.slug)}
+                                  onClick={() => openCoursePlayer(item.slug || item.id)}
                                   className="w-full sm:w-auto px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                                 >
                                   <Play className="w-3.5 h-3.5 fill-current" />
                                   <span>Assistir Aulas no Player</span>
                                 </button>
                               ) : (
-                                <button
-                                  onClick={() =>
-                                    alert(
-                                      `Iniciando download seguro de: "${item.title}". Arquivo PDF oficial emitido pela Cursos Livres Tech & I.A.`
-                                    )
-                                  }
+                                <a
+                                  href={downloadUrl}
+                                  download
                                   className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                                 >
                                   <Download className="w-3.5 h-3.5" />
                                   <span>Baixar PDF Completo</span>
-                                </button>
+                                </a>
                               )}
                             </div>
                           </div>
@@ -363,7 +414,6 @@ export default function StudentAreaPage() {
       {activeVideoCourse && activeLesson && (
         <div className="fixed inset-0 z-50 bg-navy-950/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
           <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-            {/* Header do Player */}
             <div className="p-4 bg-navy-950 text-white flex items-center justify-between border-b border-navy-800">
               <div className="flex items-center gap-2 truncate mr-4">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
@@ -383,18 +433,15 @@ export default function StudentAreaPage() {
               </button>
             </div>
 
-            {/* Conteúdo: Player à Esquerda, Lista de Aulas à Direita */}
             <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
-              {/* Vídeo e Descrição (8 colunas) */}
               <div className="lg:col-span-8 p-4 sm:p-6 bg-slate-950 flex flex-col justify-between overflow-y-auto">
                 <div className="space-y-4">
-                  {/* Container de Vídeo Limpo (sem anúncios, player focado) */}
                   <div className="relative aspect-video rounded-xl overflow-hidden bg-black shadow-lg">
                     <video
                       controls
                       src={activeLesson.videoUrl}
                       className="w-full h-full object-contain"
-                      poster={activeVideoCourse.images.cover}
+                      poster={activeVideoCourse.images?.cover}
                     />
                   </div>
 
@@ -413,14 +460,13 @@ export default function StudentAreaPage() {
                 </div>
 
                 <div className="pt-4 mt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-                  <span>Player privado e focado Cursos Livres Tech & I.A</span>
+                  <span>Player privado Cursos Livres Tech & I.A</span>
                   <span className="text-emerald-400 font-semibold">
                     ✓ Resolução Full HD
                   </span>
                 </div>
               </div>
 
-              {/* Trilha de Aulas do Curso (4 colunas) */}
               <div className="lg:col-span-4 bg-slate-50 border-t lg:border-t-0 lg:border-l border-slate-200 p-4 overflow-y-auto max-h-96 lg:max-h-full space-y-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-navy-900">
                   Conteúdo do Curso
@@ -441,7 +487,7 @@ export default function StudentAreaPage() {
                               onClick={() => setActiveLesson(lesson)}
                               className={`w-full text-left p-2.5 rounded-lg text-xs transition-all flex items-start gap-2 ${
                                 isCurrent
-                                  ? "bg-navy-900 text-white font-bold shadow-xs"
+                                    ? "bg-navy-900 text-white font-bold shadow-xs"
                                   : "hover:bg-slate-200/70 text-navy-900 bg-white border border-slate-200"
                               }`}
                             >
